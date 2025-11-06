@@ -1,0 +1,14 @@
+---
+title: "Linear Models"
+author: "Sergio Ozoria"
+date: "2025-11-06"
+output: github_document
+---
+
+```{r}
+library(tidyverse)
+library(p8105.datasets)
+
+set.seed(1)
+```
+
