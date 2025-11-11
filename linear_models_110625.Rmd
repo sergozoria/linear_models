@@ -5,10 +5,149 @@ date: "2025-11-06"
 output: github_document
 ---
 
+lm --> linear models
+glm --> for generalized linear models. Make sure you're talking about the right distributions. Specify more stuff than a linear model
+
+Use the broom package to help with complex linear regression output
+
 ```{r}
 library(tidyverse)
 library(p8105.datasets)
 
 set.seed(1)
+```
+
+Loading dataset
+
+```{r}
+data("nyc_airbnb")
+```
+
+Look at dataset / clean
+
+```{r}
+nyc_airbnb =
+  nyc_airbnb |> 
+  mutate(
+    stars = review_scores_location / 2
+  ) |> 
+  rename(
+    borough = neighbourhood_group
+  ) |> 
+  filter(borough != "Staten Island") |> 
+  select(price, stars, borough, room_type, neighbourhood)
+```
+
+Running linear regression
+
+```{r}
+fit = lm(price ~ stars + borough, data = nyc_airbnb) # borough character variable and converts them into a factor by default and in alphabetical order
+```
+
+Additional cleaning
+
+```{r}
+nyc_airbnb =
+  nyc_airbnb |> 
+  mutate(
+    borough = fct_infreq(borough), # useful for putting categories in how commonly they appear in the dataset
+    room_type = fct_infreq(room_type)
+  )
+
+fit = lm(price ~ stars + borough, data = nyc_airbnb) 
+```
+
+
+```{r, eval = FALSE}
+summary(fit)
+names(summary(fit))
+summary(fit)[["coefficients"]]
+summary(fit)[["df"]]
+
+fitted.values(fit)
+resid(fit)
+```
+
+
+```{r}
+fit |> 
+  broom::tidy() |> 
+  mutate(
+    term = str_replace(term, "borough", "Borough: ")) |> 
+  select(term, estimate, p.value) |> 
+  knitr::kable(digits = 3)
+
+fit |> 
+  broom::glance()
+```
+
+Diagnostics(residuals)
+
+```{r}
+nyc_airbnb |> 
+  modelr::add_residuals(fit) |> 
+  modelr::add_predictions(fit) |> 
+  filter(resid < 1000) |> 
+  ggplot(aes(x = resid, y = borough)) +
+  geom_violin() 
+
+nyc_airbnb |> 
+  modelr::add_residuals(fit) |> 
+  modelr::add_predictions(fit) |> 
+  filter(resid < 1000) |> 
+  ggplot(aes(x = stars, y = resid)) +
+  geom_point() 
+```
+
+Hypothesis testing
+
+```{r}
+fit |> 
+  broom::tidy()
+```
+
+What about a categorical one
+
+```{r}
+fit_alt = lm(price ~ stars + borough + room_type, data = nyc_airbnb)
+fit_null = lm(price ~ stars + borough, data = nyc_airbnb)
+
+fit_alt |> 
+  broom::tidy()
+
+anova(fit_null, fit_alt) |> 
+  broom::tidy()
+```
+
+Interactions vs nested data
+
+```{r}
+fit_interactions =
+  lm(price ~ stars * borough + room_type * borough, data = nyc_airbnb)
+
+fit_interactions |> 
+  broom::tidy()
+```
+
+
+```{r}
+nyc_airbnb |> 
+  filter(borough == "Brooklyn") |> 
+  lm(price ~ stars + room_type, data = _) |> 
+  broom::tidy()
+```
+
+Write a short function
+
+```{r}
+lm_airbnb = function(df) {
+  
+  lm(price ~ stars + room_type, data = df)
+}
+
+nyc_airbnb |> 
+  filter(borough == "Brooklyn") |> 
+  lm_airbnb() |> 
+  broom::tidy()
 ```
 
